@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MazeCraft AI - Algorithmic Maze Game & Visualizer (BFS, DFS, Dijkstra, A*)</title>
+    <meta name="description" content="Interactive web-based Maze Game and Pathfinding Visualizer featuring BFS, DFS, Dijkstra, A*, procedural maze generation (Prim's, Kruskal's, DFS), AI race, and 2-player local duel.">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Top Header Navigation -->
+    <header class="app-header">
+        <div class="logo-area">
+            <span class="logo-icon">⚡</span>
+            <div>
+                <h1>MazeCraft AI</h1>
+            </div>
+            <span class="tag-badge">DAA Lab Edition</span>
+        </div>
+
+        <!-- Mode Switcher -->
+        <nav class="mode-tabs" aria-label="Game Modes">
+            <button class="mode-tab active" data-mode="play" id="tab-play" title="Single Player Exploration">
+                <span>🎮</span> Solo Explorer
+            </button>
+            <button class="mode-tab" data-mode="ai-race" id="tab-ai-race" title="Race against AI Pathfinding Bot">
+                <span>⚡</span> Race AI
+            </button>
+            <button class="mode-tab" data-mode="pvp" id="tab-pvp" title="2-Player Local Dual Race">
+                <span>⚔️</span> 2-Player Duel
+            </button>
+            <button class="mode-tab" data-mode="visualize" id="tab-visualize" title="Interactive Step-by-Step Algorithm Lab">
+                <span>🔍</span> Visualizer
+            </button>
+            <button class="mode-tab" data-mode="showdown" id="tab-showdown" title="4-Way Algorithm Showdown Arena">
+                <span>🏆</span> 4-Way Arena
+            </button>
+        </nav>
+
+        <!-- Utility Buttons -->
+        <div class="header-actions">
+            <button class="btn-header" id="btn-toggle-mute" title="Toggle Sound FX">
+                🔊 Sound FX
+            </button>
+            <button class="btn-header" id="btn-open-theory" title="Open DAA Algorithm Theory & Complexity Sheet">
+                📖 Algorithm Theory
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Application Layout -->
+    <main class="main-layout">
+        <!-- Sidebar Controls -->
+        <aside class="control-sidebar">
+            <!-- 1. Maze Generation Panel -->
+            <section class="panel-card" aria-labelledby="heading-maze-gen">
+                <h2 id="heading-maze-gen" class="panel-title">Maze Architecture</h2>
+
+                <div class="control-group">
+                    <label for="select-maze-algo">Generation Algorithm</label>
+                    <select id="select-maze-algo" class="custom-select">
+                        <option value="backtracking" selected>Recursive Backtracking (DFS)</option>
+                        <option value="prims">Randomized Prim's Algorithm</option>
+                        <option value="kruskals">Kruskal's Algorithm (DSU)</option>
+                        <option value="weighted">Weighted Terrain (Mud & Water)</option>
+                        <option value="empty">Empty Canvas (Draw Custom)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="select-maze-size">Grid Dimensions</label>
+                    <select id="select-maze-size" class="custom-select">
+                        <option value="15">Small (15 × 15)</option>
+                        <option value="25" selected>Medium (25 × 25)</option>
+                        <option value="35">Large (35 × 35)</option>
+                        <option value="45">Giant (45 × 45)</option>
+                    </select>
+                </div>
+
+                <button id="btn-generate-maze" class="btn-primary">
+                    <span>⚡</span> Generate New Maze
+                </button>
+            </section>
+
+            <!-- 2. Game Mode Controls (Active in Play, AI Race, PVP) -->
+            <section id="game-controls" class="panel-card" aria-labelledby="heading-game-ctrl">
+                <h2 id="heading-game-ctrl" class="panel-title">Game Controls</h2>
+
+                <div id="ai-select-group" class="control-group hidden">
+                    <label for="select-ai-algo">Opponent Algorithm</label>
+                    <select id="select-ai-algo" class="custom-select">
+                        <option value="aStar" selected>A* Search (Optimal & Smart)</option>
+                        <option value="dijkstra">Dijkstra's (Cheapest Cost)</option>
+                        <option value="bfs">BFS (Shortest Steps)</option>
+                        <option value="dfs">DFS (Wild Explorer)</option>
+                    </select>
+
+                    <label for="select-ai-speed" style="margin-top: 6px;">AI Difficulty / Speed</label>
+                    <select id="select-ai-speed" class="custom-select">
+                        <option value="250">Easy (250ms/step)</option>
+                        <option value="150" selected>Normal (150ms/step)</option>
+                        <option value="80">Hard (80ms/step)</option>
+                        <option value="35">Grandmaster (35ms/step)</option>
+                    </select>
+                </div>
+
+                <div id="fog-toggle-group" class="toggle-switch">
+                    <span>Torchlight Fog of War</span>
+                    <input type="checkbox" id="toggle-fog">
+                </div>
+
+                <div class="btn-row">
+                    <button id="btn-hint" class="btn-secondary" title="Flash optimal A* path for 3 seconds">
+                        💡 Show Hint
+                    </button>
+                    <button id="btn-restart-game" class="btn-secondary">
+                        🔄 Restart Run
+                    </button>
+                </div>
+            </section>
+
+            <!-- 3. Pathfinding Visualizer Controls (Active in Visualizer & Showdown) -->
+            <section id="visualizer-controls" class="panel-card hidden" aria-labelledby="heading-viz-ctrl">
+                <h2 id="heading-viz-ctrl" class="panel-title">Algorithm Lab</h2>
+
+                <div class="control-group">
+                    <label for="select-path-algo">Search Algorithm</label>
+                    <select id="select-path-algo" class="custom-select">
+                        <option value="aStar" selected>A* Search (Manhattan Heuristic)</option>
+                        <option value="dijkstra">Dijkstra's Algorithm</option>
+                        <option value="bfs">BFS (Breadth-First Search)</option>
+                        <option value="dfs">DFS (Depth-First Search)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="slider-speed">Visualization Speed</label>
+                    <div class="slider-container">
+                        <input type="range" id="slider-speed" min="10" max="100" value="65">
+                    </div>
+                </div>
+
+                <!-- Custom Drawing Palette -->
+                <div class="control-group">
+                    <label>Interactive Paint Brush</label>
+                    <div class="brush-grid">
+                        <button class="brush-btn active" data-brush="wall" title="Click & drag to draw walls">
+                            <span class="brush-dot wall"></span> Wall
+                        </button>
+                        <button class="brush-btn" data-brush="clear" title="Click & drag to erase walls">
+                            <span class="brush-dot clear"></span> Clear
+                        </button>
+                        <button class="brush-btn" data-brush="mud" title="Mud Terrain (Weight: 5)">
+                            <span class="brush-dot mud"></span> Mud (+5)
+                        </button>
+                        <button class="brush-btn" data-brush="water" title="Water Terrain (Weight: 10)">
+                            <span class="brush-dot water"></span> Water (+10)
+                        </button>
+                        <button class="brush-btn" data-brush="start" title="Place Start Node">
+                            <span class="brush-dot start"></span> Start (S)
+                        </button>
+                        <button class="brush-btn" data-brush="end" title="Place End Node">
+                            <span class="brush-dot end"></span> Exit (E)
+                        </button>
+                    </div>
+                </div>
+
+                <button id="btn-start-solve" class="btn-accent">
+                    <span class="icon">▶</span> Solve / Visualize
+                </button>
+
+                <div class="btn-row">
+                    <button id="btn-step-solve" class="btn-secondary">
+                        ⏭ Step
+                    </button>
+                    <button id="btn-reset-visualizer" class="btn-secondary">
+                        🧹 Clear Path
+                    </button>
+                </div>
+            </section>
+
+            <!-- 4. Real-time Metrics HUD -->
+            <section class="panel-card" aria-labelledby="heading-hud">
+                <h2 id="heading-hud" class="panel-title">Real-Time Metrics</h2>
+
+                <div class="hud-grid">
+                    <div class="hud-card">
+                        <div class="hud-label">Time Elapsed</div>
+                        <div id="stat-timer" class="hud-val">0.0s</div>
+                    </div>
+                    <div class="hud-card">
+                        <div class="hud-label">Player Moves</div>
+                        <div id="stat-moves" class="hud-val">0</div>
+                    </div>
+                    <div class="hud-card">
+                        <div class="hud-label">Gems Collected</div>
+                        <div id="stat-coins" class="hud-val">0</div>
+                    </div>
+                    <div class="hud-card">
+                        <div class="hud-label">Nodes Visited</div>
+                        <div id="stat-visited" class="hud-val">0</div>
+                    </div>
+                    <div class="hud-card" style="grid-column: span 2;">
+                        <div class="hud-label">Solution Path Length</div>
+                        <div id="stat-path-len" class="hud-val">0</div>
+                    </div>
+                </div>
+            </section>
+        </aside>
+
+        <!-- Main Center Stage Viewport -->
+        <div class="stage-area">
+            <!-- 3D Perspective & Viewport Toolbar -->
+            <div class="view-3d-toolbar" role="toolbar" aria-label="3D Viewport Controls">
+                <div class="view-modes-group">
+                    <span class="toolbar-label">Perspective:</span>
+                    <button class="view-btn active" data-view="iso3d" id="btn-view-iso3d" title="True 3D Isometric View with extruded blocks & floating island">
+                        <span>🧊</span> 3D Isometric
+                    </button>
+                    <button class="view-btn" data-view="tilt3d" id="btn-view-tilt3d" title="Dynamic 3D Tilt Arena with interactive mouse parallax">
+                        <span>🎮</span> 3D Tilt Arena
+                    </button>
+                    <button class="view-btn" data-view="depth25d" id="btn-view-depth25d" title="2.5D High-Angle Extruded Relief">
+                        <span>📐</span> 2.5D Relief
+                    </button>
+                    <button class="view-btn" data-view="flat2d" id="btn-view-flat2d" title="Classic Flat 2D View">
+                        <span>⬜</span> 2D Flat
+                    </button>
+                </div>
+
+                <div class="view-controls-group">
+                    <div class="slider-control" id="slider-3d-height-group" title="Adjust 3D Wall Height Extrusion">
+                        <label for="slider-3d-height">Wall Height</label>
+                        <input type="range" id="slider-3d-height" min="1" max="10" value="6">
+                    </div>
+                    <button class="btn-icon-action" id="btn-toggle-3d-anim" title="Toggle 3D Floating Animations (Gems/Portals/Rings)">
+                        ✨ FX On
+                    </button>
+                    <button class="btn-icon-action" id="btn-reset-3d-camera" title="Reset 3D Camera / Tilt Angle">
+                        🎯 Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- Single Canvas Viewport (in 3D Perspective Container) -->
+            <div class="stage-viewport-3d" id="stage-viewport-3d">
+                <div id="single-canvas-container" class="canvas-wrapper iso-3d">
+                    <canvas id="mazeCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- 4-Way Algorithm Showdown Arena (BFS vs DFS vs Dijkstra vs A*) -->
+            <div id="showdown-container" class="hidden">
+                <div class="showdown-grid">
+                    <!-- BFS Quad -->
+                    <div class="showdown-quad">
+                        <div class="showdown-quad-header">
+                            <span class="showdown-badge badge-bfs">BFS (Breadth-First)</span>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Queue FIFO</span>
+                        </div>
+                        <canvas id="canvas-bfs"></canvas>
+                        <div class="showdown-quad-stats">
+                            <span>Nodes: <strong id="showdown-nodes-bfs">0</strong></span>
+                            <span>Len: <strong id="showdown-len-bfs">0</strong></span>
+                            <span>Cost: <strong id="showdown-cost-bfs">0</strong></span>
+                            <span>Time: <strong id="showdown-time-bfs">0ms</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- DFS Quad -->
+                    <div class="showdown-quad">
+                        <div class="showdown-quad-header">
+                            <span class="showdown-badge badge-dfs">DFS (Depth-First)</span>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Stack LIFO</span>
+                        </div>
+                        <canvas id="canvas-dfs"></canvas>
+                        <div class="showdown-quad-stats">
+                            <span>Nodes: <strong id="showdown-nodes-dfs">0</strong></span>
+                            <span>Len: <strong id="showdown-len-dfs">0</strong></span>
+                            <span>Cost: <strong id="showdown-cost-dfs">0</strong></span>
+                            <span>Time: <strong id="showdown-time-dfs">0ms</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Dijkstra Quad -->
+                    <div class="showdown-quad">
+                        <div class="showdown-quad-header">
+                            <span class="showdown-badge badge-dijkstra">Dijkstra's Algorithm</span>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Min-Priority Queue</span>
+                        </div>
+                        <canvas id="canvas-dijkstra"></canvas>
+                        <div class="showdown-quad-stats">
+                            <span>Nodes: <strong id="showdown-nodes-dijkstra">0</strong></span>
+                            <span>Len: <strong id="showdown-len-dijkstra">0</strong></span>
+                            <span>Cost: <strong id="showdown-cost-dijkstra">0</strong></span>
+                            <span>Time: <strong id="showdown-time-dijkstra">0ms</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- A* Quad -->
+                    <div class="showdown-quad">
+                        <div class="showdown-quad-header">
+                            <span class="showdown-badge badge-aStar">A* Search Algorithm</span>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">f(n) = g(n) + h(n)</span>
+                        </div>
+                        <canvas id="canvas-aStar"></canvas>
+                        <div class="showdown-quad-stats">
+                            <span>Nodes: <strong id="showdown-nodes-aStar">0</strong></span>
+                            <span>Len: <strong id="showdown-len-aStar">0</strong></span>
+                            <span>Cost: <strong id="showdown-cost-aStar">0</strong></span>
+                            <span>Time: <strong id="showdown-time-aStar">0ms</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Legend & Controls Guide -->
+            <footer class="stage-footer">
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span class="brush-dot start"></span>
+                        <span>Start (S)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="brush-dot end"></span>
+                        <span>Portal Exit (E)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="brush-dot mud"></span>
+                        <span>Mud (Cost 5)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="brush-dot water"></span>
+                        <span>Water (Cost 10)</span>
+                    </div>
+                </div>
+
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span>P1: <span class="key-pill">W</span> <span class="key-pill">A</span> <span class="key-pill">S</span> <span class="key-pill">D</span> or <span class="key-pill">↑</span> <span class="key-pill">←</span> <span class="key-pill">↓</span> <span class="key-pill">→</span></span>
+                    </div>
+                    <div id="p2-legend" class="legend-item hidden">
+                        <span>P2: <span class="key-pill">↑</span> <span class="key-pill">←</span> <span class="key-pill">↓</span> <span class="key-pill">→</span></span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </main>
+
+    <!-- Modal: Victory / Game Over -->
+    <div id="game-over-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h2 id="modal-winner">🎉 Victory!</h2>
+                <button id="btn-modal-close" class="btn-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modal-details" style="font-size: 1rem; color: #f1f5f9;"></p>
+                <div id="modal-stats" class="hud-card" style="display: flex; gap: 20px; font-size: 0.9rem;"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-modal-play-again" class="btn-primary" style="width: auto;">
+                    🎮 Play Again / Next Level
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Algorithm Theory & DAA Reference -->
+    <div id="theory-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal-dialog" style="max-width: 820px;">
+            <div class="modal-header">
+                <h2>📚 DAA Algorithm Reference & Complexity Sheet</h2>
+                <button id="btn-close-theory" class="btn-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Comprehensive comparative summary of the graph traversal and pathfinding algorithms implemented in this project:</p>
+
+                <table class="theory-table">
+                    <thead>
+                        <tr>
+                            <th>Algorithm</th>
+                            <th>Data Structure</th>
+                            <th>Time Complexity</th>
+                            <th>Space Complexity</th>
+                            <th>Optimality</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>BFS</strong> (Breadth-First)</td>
+                            <td>FIFO Queue</td>
+                            <td><span class="theory-formula">O(V + E)</span></td>
+                            <td><span class="theory-formula">O(V)</span></td>
+                            <td>✅ Optimal for unweighted graphs</td>
+                        </tr>
+                        <tr>
+                            <td><strong>DFS</strong> (Depth-First)</td>
+                            <td>LIFO Stack / Recursion</td>
+                            <td><span class="theory-formula">O(V + E)</span></td>
+                            <td><span class="theory-formula">O(V)</span></td>
+                            <td>❌ Not optimal (wanders into dead ends)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Dijkstra's</strong></td>
+                            <td>Min-Priority Queue (Min-Heap)</td>
+                            <td><span class="theory-formula">O((V + E) log V)</span></td>
+                            <td><span class="theory-formula">O(V)</span></td>
+                            <td>✅ Guaranteed optimal for non-negative weights</td>
+                        </tr>
+                        <tr>
+                            <td><strong>A* Search</strong></td>
+                            <td>Min-Priority Queue + Heuristic <span class="theory-formula">f = g + h</span></td>
+                            <td><span class="theory-formula">O((V + E) log V)</span> (worst-case)</td>
+                            <td><span class="theory-formula">O(V)</span></td>
+                            <td>✅ Guaranteed optimal if <span class="theory-formula">h(n)</span> is admissible</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div style="background: rgba(30, 41, 59, 0.5); padding: 12px; border-radius: 8px; border-left: 3px solid var(--accent-cyan); margin-top: 10px;">
+                    <h3 style="font-size: 0.9rem; color: #ffffff; margin-bottom: 4px;">Heuristic Function in A*</h3>
+                    <p style="font-size: 0.8rem;">
+                        This implementation uses <strong>Manhattan Distance</strong>:
+                        <span class="theory-formula">h(n) = |x_n - x_end| + |y_n - y_end|</span>, which is admissible (never overestimates the true cost in a 4-connected grid graph), ensuring that A* explores significantly fewer states than Dijkstra while guaranteeing the shortest path.
+                    </p>
+                </div>
+
+                <div style="background: rgba(30, 41, 59, 0.5); padding: 12px; border-radius: 8px; border-left: 3px solid var(--accent-purple); margin-top: 6px;">
+                    <h3 style="font-size: 0.9rem; color: #ffffff; margin-bottom: 4px;">Procedural Maze Generation</h3>
+                    <p style="font-size: 0.8rem;">
+                        • <strong>Recursive Backtracking (DFS)</strong>: Generates deep, winding corridors with few branches.<br>
+                        • <strong>Randomized Prim's</strong>: Builds a spanning tree with high branching factor and many short dead ends.<br>
+                        • <strong>Kruskal's Algorithm</strong>: Uses Disjoint Set Union (DSU) to generate a uniform spanning tree.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="document.getElementById('theory-modal').classList.add('hidden')">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Scripts -->
+    <script src="js/audio.js"></script>
+    <script src="js/maze.js"></script>
+    <script src="js/algorithms.js"></script>
+    <script src="js/visualizer.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
